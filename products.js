@@ -16,7 +16,7 @@
 
 const PRODUCTS = [
   {
-    id: "cp01-answer",
+    id: "26cp01-answer",
     name: "2026 CP 01 参考答案",
     priceRanges: {
       hkd: [2800, 4000],   // HKD 28.00 - 40.00
