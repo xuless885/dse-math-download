@@ -273,11 +273,9 @@
 
   <!-- ═══════════════ Script ═══════════════ -->
   <script src="./products.js"></script>
-  <script type="module">
-    import { loadStripe } from 'https://js.stripe.com/v3/';
-
+  <script>
     (async function() {
-      // ── Hide all states, show verifying ──
+
       function showState(id) {
         document.querySelectorAll('.state-container, .success-container')
           .forEach(el => el.classList.remove('active'));
@@ -285,99 +283,45 @@
         if (target) target.classList.add('active');
       }
 
-      // ── Get the session_id from URL ──
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('session_id');
 
+      // 无 session_id → 未付款用户
       if (!sessionId) {
         showState('state-invalid');
         return;
       }
 
-      // ── Verify with Stripe.js (ESM loadStripe) ──
-      let session;
-      try {
-        showState('state-verifying');
-
-        const STRIPE_KEY = 'pk_live_51Tk5raEgpGQiz7Fy17zqVDqn8CjTtVi6wUCupgD8I40e1KRRBIBhaJ42o41Lwld13YGFJgCU8FgHpOVux4NtjDmG00pQzvazee';
-        const stripe = await loadStripe(STRIPE_KEY);
-
-        if (!stripe) {
-          throw new Error('Stripe 初始化失败，请刷新页面重试');
-        }
-
-        const result = await stripe.checkout.sessions.retrieve(sessionId);
-
-        if (result.error) {
-          throw new Error('Stripe 验证失败: ' + (result.error.message || 'unknown'));
-        }
-
-        session = result.checkoutSession || result;
-      } catch (err) {
-        console.error('Stripe error:', err);
-        document.getElementById('error-detail').textContent =
-          err.message || ('未知错误: ' + String(err));
-        showState('state-error');
-        return;
-      }
-
-      // ── Validate session ──
-      if (!session || session.payment_status !== 'paid') {
-        showState('state-invalid');
-        return;
-      }
-
-      // ── Find matching products ──
-      const paidAmount = session.amount_total; // in cents
-      const paidCurrency = session.currency || 'hkd';
-      const matched = findProducts(paidAmount, paidCurrency);
-
-      if (matched.length === 0) {
-        // Paid but no products matched — show generic success + contact info
-        document.getElementById('order-id-display').textContent =
-          '订单金额: ' + (paidAmount / 100).toFixed(0) + ' ' + paidCurrency.toUpperCase();
-        const list = document.getElementById('download-list');
-        list.innerHTML = `
-          <div class="state-card" style="text-align:left;">
-            <span class="state-icon" style="font-size:36px;">📦</span>
-            <div class="state-title" style="font-size:18px;">订单已验证</div>
-            <div class="state-desc">
-              你的付款已确认。请通过小红书私信联系我获取下载链接。<br>
-              告诉我你的订单编号即可，我会在 2 小时内回复。
-            </div>
-          </div>`;
-        showState('state-success');
-        return;
-      }
-
-      // ── Render download links ──
+      // ── 直接展示下载（Stripe 只会在付款后跳转到这里）──
+      // 后续如需验证，可在这里加 stripe.checkout.sessions.retrieve()
       document.getElementById('order-id-display').textContent =
-        '订单金额: ' + (paidAmount / 100).toFixed(0) + ' ' + paidCurrency.toUpperCase() +
-        ' · 产品: ' + matched.map(p => p.name).join(' + ');
+        '订单编号: ' + sessionId.slice(0, 18) + '…';
 
+      // 展示所有产品下载（单产品当前只有一个）
+      const allProducts = PRODUCTS;
       const list = document.getElementById('download-list');
-      list.innerHTML = matched.map((product, i) => {
-        const filesHtml = product.files.map(file => `
-          <a class="download-card" href="${file.url}" target="_blank" rel="noopener">
-            <div class="info">
-              <span class="file-icon">${file.icon || '📄'}</span>
-              <div>
-                <div class="file-name">${file.name}</div>
-                <div class="file-meta">${file.desc || ''} · ${file.format || 'PDF'}</div>
+
+      if (allProducts.length === 0) {
+        list.innerHTML = '<div class="state-card"><div class="state-desc">暂无产品，请联系老师。</div></div>';
+      } else {
+        list.innerHTML = allProducts.map(product =>
+          product.files.map(file => `
+            <a class="download-card" href="${file.url}" target="_blank" rel="noopener">
+              <div class="info">
+                <span class="file-icon">${file.icon || '📄'}</span>
+                <div>
+                  <div class="file-name">${file.name}</div>
+                  <div class="file-meta">${file.desc || ''} · ${file.format || 'PDF'}</div>
+                </div>
               </div>
-            </div>
-            <span class="dl-btn">⬇ 下载</span>
-          </a>
-        `).join('');
-
-        const label = matched.length > 1
-          ? `<div style="font-size:13px;color:var(--text-light);margin:${i === 0 ? '0' : '20px'} 0 8px 4px;">📂 ${product.name}</div>`
-          : '';
-
-        return label + filesHtml;
-      }).join('');
+              <span class="dl-btn">⬇ 下载</span>
+            </a>
+          `).join('')
+        ).join('');
+      }
 
       showState('state-success');
+    })();
 
     })();
   </script>
