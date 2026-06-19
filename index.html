@@ -297,13 +297,29 @@
       let session;
       try {
         showState('state-verifying');
-        const stripe = Stripe('pk_live_51Tk5raEgpGQiz7Fy17zqVDqn8CjTtVi6wUCupgD8I40e1KRRBIBhaJ42o41Lwld13YGFJgCU8FgHpOVux4NtjDmG00pQzvazee');
+
+        // Stripe 公钥：测试用 pk_test_，正式用 pk_live_。必须与 Payment Link 的模式一致
+        const STRIPE_KEY = 'pk_live_51Tk5raEgpGQiz7Fy17zqVDqn8CjTtVi6wUCupgD8I40e1KRRBIBhaJ42o41Lwld13YGFJgCU8FgHpOVux4NtjDmG00pQzvazee';
+
+        if (typeof Stripe !== 'function') {
+          throw new Error('Stripe.js 未加载，请检查网络后刷新页面');
+        }
+
+        const stripe = Stripe(STRIPE_KEY);
+
+        if (!stripe || !stripe.checkout || !stripe.checkout.sessions) {
+          throw new Error(
+            '密钥模式不匹配：请确认 Stripe 公钥的模式（测试/正式）与 Payment Link 一致。' +
+            '如果你用测试卡号 4242... 付款，需要临时将公钥换成 pk_test_ 开头的那把。'
+          );
+        }
+
         const { checkoutSession, error } = await stripe.checkout.sessions.retrieve(sessionId);
 
         if (error) {
           console.error('Stripe error:', error);
           document.getElementById('error-detail').textContent =
-            'Error: ' + (error.message || 'unknown');
+            'Stripe 验证失败: ' + (error.message || 'unknown');
           showState('state-error');
           return;
         }
@@ -312,7 +328,7 @@
       } catch (err) {
         console.error('Fetch error:', err);
         document.getElementById('error-detail').textContent =
-          'Exception: ' + (err.message || 'unknown');
+          err.message || ('未知错误: ' + String(err));
         showState('state-error');
         return;
       }
