@@ -12,68 +12,15 @@
 
 const PRODUCTS = [
   {
-    name: "全套练习册",
-    amountRange: [28000, 40000],   // HKD 280 - HKD 400（cents）
+    name: "2026 CP 01 Answer",
+    amountRange: [28000, 40000], 
     files: [
       {
-        name: "DSE 数学练习册 · 全集",
+        name: "DSE 模拟卷 2026 CP 01 · 参考答案",
         desc: "匹配全部讲义章节，共 27 章",
         format: "PDF",
         icon: "📘",
-        url: "https://drive.google.com/file/d/XXXXXXXXX/view"   // ← 替换为你的链接
-      }
-    ]
-  },
-  {
-    name: "全套解题教程",
-    amountRange: [38000, 50000],   // HKD 380 - HKD 500
-    files: [
-      {
-        name: "DSE 数学解题教程 · 全集",
-        desc: "逐题精讲，匹配全部讲义章节",
-        format: "PDF",
-        icon: "📙",
-        url: "https://drive.google.com/file/d/XXXXXXXXX/view"   // ← 替换为你的链接
-      }
-    ]
-  },
-  {
-    name: "模拟卷全集",
-    amountRange: [29000, 41000],   // HKD 290 - HKD 410
-    files: [
-      {
-        name: "DSE 数学模拟卷 · 全集",
-        desc: "5-10 套全真模拟，对标 DSE 难度",
-        format: "PDF",
-        icon: "📝",
-        url: "https://drive.google.com/file/d/XXXXXXXXX/view"   // ← 替换为你的链接
-      }
-    ]
-  },
-  {
-    name: "超级套餐（练习册 + 解题教程 + 模拟卷）",
-    amountRange: [68000, 90000],   // HKD 680 - HKD 900
-    files: [
-      {
-        name: "DSE 数学练习册 · 全集",
-        desc: "匹配全部讲义章节，共 27 章",
-        format: "PDF",
-        icon: "📘",
-        url: "https://drive.google.com/file/d/XXXXXXXXX/view"
-      },
-      {
-        name: "DSE 数学解题教程 · 全集",
-        desc: "逐题精讲，匹配全部讲义章节",
-        format: "PDF",
-        icon: "📙",
-        url: "https://drive.google.com/file/d/XXXXXXXXX/view"
-      },
-      {
-        name: "DSE 数学模拟卷 · 全集",
-        desc: "5-10 套全真模拟，对标 DSE 难度",
-        format: "PDF",
-        icon: "📝",
-        url: "https://drive.google.com/file/d/XXXXXXXXX/view"
+        url: "https://1drv.ms/b/c/9c6c235d3dfcdcf4/IQALvIDejv4xTJ8id3hhBovYAUFdGHcYBYZuo4zOwhXzMGA?e=jujn9i"   // ← 替换为你的链接
       }
     ]
   }
