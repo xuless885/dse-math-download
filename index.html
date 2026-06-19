@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>下载你的 DSE 数学资料</title>
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <!--
+  ╔══════════════════════════════════════╗
+  ║  DSE 数学笔记 · Stripe 验证下载站   ║
+  ║  付款后 Stripe 自动跳转到此页面     ║
+  ║  携带 ?session_id=cs_xxx 参数       ║
+  ╚══════════════════════════════════════╝
+  -->
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #faf9f7;
+      --card: #ffffff;
+      --text: #2d2a26;
+      --text-light: #6b6560;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --border: #e8e4df;
+      --success: #16a34a;
+      --success-bg: #f0fdf4;
+      --error: #dc2626;
+      --error-bg: #fef2f2;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "PingFang HK", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Loading / Error / Empty states ── */
+    .state-container {
+      display: none;
+      width: 100%;
+      max-width: 640px;
+      margin: 80px auto 0;
+      padding: 0 20px;
+    }
+    .state-container.active { display: block; }
+
+    .state-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+
+    .state-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    .state-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .state-desc {
+      font-size: 15px;
+      color: var(--text-light);
+      line-height: 1.7;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Success Download Page ── */
+    .success-container {
+      display: none;
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .success-container.active { display: block; }
+
+    .success-header {
+      text-align: center;
+      padding: 40px 20px 32px;
+    }
+    .success-header .checkmark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px; height: 64px;
+      background: var(--success-bg);
+      border-radius: 50%;
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    .success-header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .success-header .order-id {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    /* Download cards */
+    .download-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .download-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.2s, border-color 0.2s;
+      cursor: pointer;
+    }
+    .download-card:hover {
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent);
+    }
+
+    .download-card .info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+      min-width: 0;
+    }
+    .download-card .file-icon {
+      font-size: 36px;
+      flex-shrink: 0;
+    }
+    .download-card .file-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .download-card .file-meta {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    .download-card .dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .download-card .dl-btn:hover { background: var(--accent-hover); }
+
+    /* Info box */
+    .info-box {
+      background: #f0f7ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #1e40af;
+      line-height: 1.6;
+    }
+    .info-box .info-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      .state-card { padding: 36px 20px; }
+      .success-header { padding: 28px 16px 24px; }
+      .success-header h1 { font-size: 22px; }
+      .download-card { flex-direction: column; align-items: flex-start; gap: 14px; }
+      .download-card .dl-btn { width: 100%; text-align: center; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════ State: Verifying ═══════════════ -->
+  <div id="state-verifying" class="state-container active">
+    <div class="state-card">
+      <div class="spinner"></div>
+      <div class="state-title">正在验证你的订单…</div>
+      <div class="state-desc">请稍候，这只需要几秒钟</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ State: Invalid / No Session ═══════════════ -->
+  <div id="state-invalid" class="state-container">
+    <div class="state-card">
+      <span class="state-icon">🔒</span>
+      <div class="state-title">未找到有效订单</div>
+      <div class="state-desc">
+        此页面仅供已付款用户访问。<br>
+        如果你已完成付款，请通过小红书私信联系我，我会尽快处理。
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ State: Error ═══════════════ -->
+  <div id="state-error" class="state-container">
+    <div class="state-card">
+      <span class="state-icon">⚠️</span>
+      <div class="state-title">验证暂时失败</div>
+      <div class="state-desc">
+        网络或服务暂时异常，请刷新页面重试。<br>
+        如果问题持续，请截图此页面并小红书私信我。
+        <span id="error-detail" style="display:block;margin-top:12px;font-size:13px;color:#999;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ State: Success ═══════════════ -->
+  <div id="state-success" class="success-container">
+    <div class="success-header">
+      <div class="checkmark">✅</div>
+      <h1>购买成功！</h1>
+      <div class="order-id" id="order-id-display"></div>
+    </div>
+
+    <div class="download-list" id="download-list"></div>
+
+    <div class="info-box">
+      <div class="info-title">📌 温馨提示</div>
+      链接长期有效，建议保存此页面或收藏。<br>
+      如果遇到下载问题，可以通过小红书私信联系我。<br>
+      PDF 文件已添加你的订单水印，请勿公开分享，感谢尊重创作成果 🙏
+    </div>
+  </div>
+
+  <!-- ═══════════════ Script ═══════════════ -->
+  <script src="./products.js"></script>
+  <script>
+    (async function() {
+      // ── Hide all states, show verifying ──
+      function showState(id) {
+        document.querySelectorAll('.state-container, .success-container')
+          .forEach(el => el.classList.remove('active'));
+        const target = document.getElementById(id);
+        if (target) target.classList.add('active');
+      }
+
+      // ── Get the session_id from URL ──
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
+
+      if (!sessionId) {
+        showState('state-invalid');
+        return;
+      }
+
+      // ── Verify with Stripe.js ──
+      let session;
+      try {
+        showState('state-verifying');
+        const stripe = Stripe('pk_live_51Tk5raEgpGQiz7Fy17zqVDqn8CjTtVi6wUCupgD8I40e1KRRBIBhaJ42o41Lwld13YGFJgCU8FgHpOVux4NtjDmG00pQzvazee');
+        const { checkoutSession, error } = await stripe.checkout.sessions.retrieve(sessionId);
+
+        if (error) {
+          console.error('Stripe error:', error);
+          document.getElementById('error-detail').textContent =
+            'Error: ' + (error.message || 'unknown');
+          showState('state-error');
+          return;
+        }
+
+        session = checkoutSession;
+      } catch (err) {
+        console.error('Fetch error:', err);
+        document.getElementById('error-detail').textContent =
+          'Exception: ' + (err.message || 'unknown');
+        showState('state-error');
+        return;
+      }
+
+      // ── Validate session ──
+      if (!session || session.payment_status !== 'paid') {
+        showState('state-invalid');
+        return;
+      }
+
+      // ── Find matching products ──
+      const paidAmount = session.amount_total; // in cents
+      const paidCurrency = session.currency || 'hkd';
+      const matched = findProducts(paidAmount, paidCurrency);
+
+      if (matched.length === 0) {
+        // Paid but no products matched — show generic success + contact info
+        document.getElementById('order-id-display').textContent =
+          '订单金额: ' + (paidAmount / 100).toFixed(0) + ' ' + paidCurrency.toUpperCase();
+        const list = document.getElementById('download-list');
+        list.innerHTML = `
+          <div class="state-card" style="text-align:left;">
+            <span class="state-icon" style="font-size:36px;">📦</span>
+            <div class="state-title" style="font-size:18px;">订单已验证</div>
+            <div class="state-desc">
+              你的付款已确认。请通过小红书私信联系我获取下载链接。<br>
+              告诉我你的订单编号即可，我会在 2 小时内回复。
+            </div>
+          </div>`;
+        showState('state-success');
+        return;
+      }
+
+      // ── Render download links ──
+      document.getElementById('order-id-display').textContent =
+        '订单金额: ' + (paidAmount / 100).toFixed(0) + ' ' + paidCurrency.toUpperCase() +
+        ' · 产品: ' + matched.map(p => p.name).join(' + ');
+
+      const list = document.getElementById('download-list');
+      list.innerHTML = matched.map((product, i) => {
+        const filesHtml = product.files.map(file => `
+          <a class="download-card" href="${file.url}" target="_blank" rel="noopener">
+            <div class="info">
+              <span class="file-icon">${file.icon || '📄'}</span>
+              <div>
+                <div class="file-name">${file.name}</div>
+                <div class="file-meta">${file.desc || ''} · ${file.format || 'PDF'}</div>
+              </div>
+            </div>
+            <span class="dl-btn">⬇ 下载</span>
+          </a>
+        `).join('');
+
+        const label = matched.length > 1
+          ? `<div style="font-size:13px;color:var(--text-light);margin:${i === 0 ? '0' : '20px'} 0 8px 4px;">📂 ${product.name}</div>`
+          : '';
+
+        return label + filesHtml;
+      }).join('');
+
+      showState('state-success');
+
+    })();
+  </script>
+
+</body>
+</html>
