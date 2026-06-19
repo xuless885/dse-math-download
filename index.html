@@ -273,7 +273,9 @@
 
   <!-- ═══════════════ Script ═══════════════ -->
   <script src="./products.js"></script>
-  <script>
+  <script type="module">
+    import { loadStripe } from 'https://js.stripe.com/v3/';
+
     (async function() {
 
       function showState(id) {
@@ -285,6 +287,7 @@
 
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('session_id');
+      const urlProductId = params.get('product');
 
       // 无 session_id → 未付款用户
       if (!sessionId) {
@@ -292,20 +295,52 @@
         return;
       }
 
-      // ── 直接展示下载（Stripe 只会在付款后跳转到这里）──
-      // 后续如需验证，可在这里加 stripe.checkout.sessions.retrieve()
-      document.getElementById('order-id-display').textContent =
-        '订单编号: ' + sessionId.slice(0, 18) + '…';
+      let matchedProducts = [];
+      let amount = 0;
+      let currency = 'hkd';
 
-      // 展示所有产品下载（单产品当前只有一个）
-      const allProducts = PRODUCTS;
+      // 1. 如果 URL 带了 product 参数，直接精确匹配（最可靠）
+      if (urlProductId) {
+        matchedProducts = findProducts(0, 'hkd', urlProductId);
+      }
+
+      // 2. 否则尝试用 Stripe.js 验证订单金额和币种
+      if (matchedProducts.length === 0) {
+        try {
+          const STRIPE_KEY = 'pk_live_51Tk5raEgpGQiz7Fy17zqVDqn8CjTtVi6wUCupgD8I40e1KRRBIBhaJ42o41Lwld13YGFJgCU8FgHpOVux4NtjDmG00pQzvazee';
+          const stripe = await loadStripe(STRIPE_KEY);
+
+          if (stripe && stripe.checkout && stripe.checkout.sessions) {
+            const result = await stripe.checkout.sessions.retrieve(sessionId);
+            const session = result.checkoutSession || result;
+
+            if (session && session.payment_status === 'paid') {
+              amount = session.amount_total || 0;
+              currency = session.currency || 'hkd';
+              matchedProducts = findProducts(amount, currency, null);
+            }
+          }
+        } catch (err) {
+          console.warn('Stripe verification failed, falling back:', err);
+        }
+      }
+
+      // 3. 还是匹配不到 → 展示所有产品（兜底，确保用户能下载）
+      if (matchedProducts.length === 0) {
+        matchedProducts = PRODUCTS;
+      }
+
+      document.getElementById('order-id-display').textContent =
+        '订单编号: ' + sessionId.slice(0, 18) + '…' +
+        (amount ? ' · ' + (amount / 100).toFixed(2) + ' ' + currency.toUpperCase() : '');
+
       const list = document.getElementById('download-list');
 
-      if (allProducts.length === 0) {
+      if (matchedProducts.length === 0) {
         list.innerHTML = '<div class="state-card"><div class="state-desc">暂无产品，请联系老师。</div></div>';
       } else {
-        list.innerHTML = allProducts.map(product =>
-          product.files.map(file => `
+        list.innerHTML = matchedProducts.map((product, i) => {
+          const filesHtml = product.files.map(file => `
             <a class="download-card" href="${file.url}" target="_blank" rel="noopener">
               <div class="info">
                 <span class="file-icon">${file.icon || '📄'}</span>
@@ -316,8 +351,14 @@
               </div>
               <span class="dl-btn">⬇ 下载</span>
             </a>
-          `).join('')
-        ).join('');
+          `).join('');
+
+          const label = matchedProducts.length > 1
+            ? `<div style="font-size:13px;color:var(--text-light);margin:${i === 0 ? '0' : '20px'} 0 8px 4px;">📂 ${product.name}</div>`
+            : '';
+
+          return label + filesHtml;
+        }).join('');
       }
 
       showState('state-success');
