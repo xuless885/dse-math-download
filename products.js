@@ -31,6 +31,22 @@ const PRODUCTS = [
         url: "https://1drv.ms/b/c/9c6c235d3dfcdcf4/IQALvIDejv4xTJ8id3hhBovYAUFdGHcYBYZuo4zOwhXzMGA?e=jujn9i"
       }
     ]
+  },
+  {
+    id: "test",
+    name: "Test",
+    priceRanges: {
+      hkd: [400, 400]   // HKD 4.00
+    },
+    files: [
+      {
+        name: "Test",
+        desc: "Test",
+        format: "PDF",
+        icon: "📘",
+        url: "https://1drv.ms/b/c/9c6c235d3dfcdcf4/IQALvIDejv4xTJ8id3hhBovYAUFdGHcYBYZuo4zOwhXzMGA?e=jujn9i"
+      }
+    ]
   }
   // ════════════════════════════════════════════════════════
   // 添加新产品模板（复制后修改）：
