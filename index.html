@@ -276,6 +276,16 @@
   <script type="module">
     import { loadStripe } from 'https://js.stripe.com/v3/';
 
+    // 5 秒超时包装器：避免 Stripe.js 加载卡住
+    function withTimeout(promise, ms) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Timeout')), ms);
+        promise
+          .then(result => { clearTimeout(timer); resolve(result); })
+          .catch(err => { clearTimeout(timer); reject(err); });
+      });
+    }
+
     (async function() {
 
       function showState(id) {
@@ -299,19 +309,35 @@
       let amount = 0;
       let currency = 'hkd';
 
-      // 1. 如果 URL 带了 product 参数，直接精确匹配（最可靠）
+      // 1. 如果 URL 带了 product 参数，优先精确匹配
       if (urlProductId) {
         matchedProducts = findProducts(0, 'hkd', urlProductId);
+
+        // product 参数存在但匹配失败 → 显示明确错误
+        if (matchedProducts.length === 0) {
+          document.getElementById('order-id-display').textContent = '订单参数异常';
+          document.getElementById('download-list').innerHTML = `
+            <div class="state-card" style="text-align:left;">
+              <span class="state-icon" style="font-size:36px;">⚠️</span>
+              <div class="state-title" style="font-size:18px;">产品编号不匹配</div>
+              <div class="state-desc">
+                当前链接里的产品编号 <code>${urlProductId}</code> 在系统里找不到。<br>
+                请通过小红书私信联系我，告诉我你的订单编号，我会手动处理。
+              </div>
+            </div>`;
+          showState('state-success');
+          return;
+        }
       }
 
-      // 2. 否则尝试用 Stripe.js 验证订单金额和币种
+      // 2. 没有 product 参数时，尝试用 Stripe.js 验证订单金额和币种
       if (matchedProducts.length === 0) {
         try {
           const STRIPE_KEY = 'pk_live_51Tk5raEgpGQiz7Fy17zqVDqn8CjTtVi6wUCupgD8I40e1KRRBIBhaJ42o41Lwld13YGFJgCU8FgHpOVux4NtjDmG00pQzvazee';
-          const stripe = await loadStripe(STRIPE_KEY);
+          const stripe = await withTimeout(loadStripe(STRIPE_KEY), 5000);
 
           if (stripe && stripe.checkout && stripe.checkout.sessions) {
-            const result = await stripe.checkout.sessions.retrieve(sessionId);
+            const result = await withTimeout(stripe.checkout.sessions.retrieve(sessionId), 5000);
             const session = result.checkoutSession || result;
 
             if (session && session.payment_status === 'paid') {
@@ -325,7 +351,7 @@
         }
       }
 
-      // 3. 还是匹配不到 → 展示所有产品（兜底，确保用户能下载）
+      // 3. 还是匹配不到 → 兜底展示所有产品（确保买家能下载）
       if (matchedProducts.length === 0) {
         matchedProducts = PRODUCTS;
       }
